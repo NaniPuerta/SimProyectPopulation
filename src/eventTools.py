@@ -6,10 +6,10 @@ from src.probData import *
 from src.probabilityTools import *
 
 
-population = Population()
+population
 
 class Event:
-    def __init__(self, time, eventQueue: list, person: Person):
+    def __init__(self, time, eventQueue: list, person: Person, population: Population):
         self._time = time
         self._person = person
         self._population = population
@@ -48,7 +48,7 @@ class Birth(Event):
             s = np.random.uniform()
             p = Person(0, s <= 0.5)
             self._population.AddPerson(p)
-            heapq.heappush(self._eventqueue, PrefixedDeath(self._time, self._eventqueue, p, ))
+            heapq.heappush(self._eventqueue, PrefixedDeath(self._time, self._eventqueue, p, po))
             heapq.heappush(self._eventqueue, AgeUp(self._time + 12, self._eventqueue, p, self._population))
         self._person.UpdateChildren(childs)
         self._father.UpdateChildren(childs)
