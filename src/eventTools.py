@@ -6,233 +6,234 @@ from src.probData import *
 from src.probabilityTools import *
 
 
-population
+population = Population()
+eventQueue = []
 
 class Event:
-    def __init__(self, time, eventQueue: list, person: Person, population: Population):
+    def __init__(self, time, person: Person):
         self._time = time
         self._person = person
-        self._population = population
-        self._eventqueue = eventQueue
 
     def __lt__(self, anotherEvent):
-        return self._time < anotherEvent._time
+        return self.Time < anotherEvent.Time
     
     @property
     def Time(self):
         return self._time
     
-    #@property
-    #def GetPerson:
-    #    return self._person
+    @property
+    def Person(self):
+        return self._person
 
 
 class Birth(Event):
     def __repr__(self):
-        return f'Birth in month {self._time}'
+        return f'Birth in month {self.Time}'
     def __str__(self):
         return self.__repr__()
 
-    def __init__(self, time, eventQueue: list, person: Person, population: Population, father: Person):
-        super().__init__(time, eventQueue, person, population)
+    def __init__(self, time, person: Person, father: Person):
+        super().__init__(time, person)
         self._father = father
 
+    @property
+    def Father(self):
+        return self._father
+
     def check(self):
-        if self._person.IsPregnant():
-            self._execute()
+        self._execute()
     
     def _execute(self):
         p = np.random.uniform()
         childs = babiesBorn(p)
         for i in range(childs):
             s = np.random.uniform()
-            p = Person(0, s <= 0.5)
-            self._population.AddPerson(p)
-            heapq.heappush(self._eventqueue, PrefixedDeath(self._time, self._eventqueue, p, po))
-            heapq.heappush(self._eventqueue, AgeUp(self._time + 12, self._eventqueue, p, self._population))
-        self._person.UpdateChildren(childs)
-        self._father.UpdateChildren(childs)
-        self._person.SetPregnant(False)
-        self._population.UpdateBirths(childs > 1)
-        self._population.AddEvent(self)       
-        heapq.heappush(self._eventqueue, Pregnancy(self._time + 10, self._eventqueue, self._person, self._population))
-        heapq.heappush(self._eventqueue, Breakup(self._time + 24, self._eventqueue, self._person, self._population))
+            pers = population.NewPerson(0, s <= 0.5)
+            heapq.heappush(eventQueue, AgeUp(self.Time + 12, pers))
+        self.Person.UpdateChildren(childs)
+        self.Father.UpdateChildren(childs)
+        self.Person.SetPregnant(False)
+        population.UpdateBirths(childs > 1)
+        population.AddEvent(self)       
+        print(f'{self}')
+        heapq.heappush(eventQueue, Pregnancy(self.Time + 10, self.Person))
+        heapq.heappush(eventQueue, Breakup(self.Time + 24, self.Person))
 
 
 class Death(Event):
     def __repr__(self):
-        return f'Death in month {self._time}'
+        return f'Death in month {self.Time}'
     def __str__(self):
         return self.__repr__()
 
     def check(self):
-        #p = np.random.uniform()
-        #prob = deathProb(self._person.Age, self._person.iswoman)
-        #if p <= prob:
         self.__execute()
             
-    def __execute(self):        
-        if not self._person.IsSingle():
-            lambd = mourningTimeLambda(self._person.Partner.Age)
+    def __execute(self):  
+        single = self.Person.IsSingle()      
+        if not single:
+            partner = Population.GetPartner(population, self.Person)
+            lambd = mourningTimeLambda(partner.Age)
             etime = int(1/gen_exp(lambd))
-            heapq.heappush(self._eventqueue, EndMourning(self._time + etime, self._eventqueue, self._person.Partner, self._population))
-            self._person.Partner.SetSingle()
-        for event in self._eventqueue:
-            if self._person == event._person:
-                self._eventqueue.remove(event)
-                heapq.heapify(self._eventqueue)
-        self._population.RemovePerson(self._person)
-        self._population.AddEvent(self) 
+            partner.SetSingle()
+            partner.SetMourning(True)
+            heapq.heappush(eventQueue, EndMourning(self.Time + etime, partner))
+        for event in eventQueue:
+            if self.Person == event.Person:
+                eventQueue.remove(event)     
+        heapq.heapify(eventQueue)        
+        population.RemovePerson(self.Person)
+        population.AddEvent(self) 
+        print(f'{self}')
 
 
 class PrefixedDeath(Event):
     def check(self):
         u = np.random.uniform()
-        probs = fixedDeathProb(self._person.IsWoman())
+        probs = fixedDeathProb(self.Person.IsWoman())
         for item in probs:
             agemin, agemax, prob = item
             if u <= prob:
                 avage = int(np.random.uniform(agemin,agemax))
-                dtime = (avage - self._person.Age)*12
-                heapq.heappush(self._eventqueue, Death(self._time + dtime, self._eventqueue, self._person, self._population))
+                dtime = (avage - self.Person.Age)*12
+                heapq.heappush(eventQueue, Death(self.Time + dtime, self.Person))
 
 class Pregnancy(Event):
     def __repr__(self):
-        return f'Pregnancy in month {self._time}'
+        return f'Pregnancy in month {self.Time}'
     def __str__(self):
         return self.__repr__()
 
     def check(self):
-        if self._person.IsWoman() and not self._person.IsSingle() and self._person.CanHaveChildren() and self._person.Partner.CanHaveChildren():
-            p = pregnantProb(self._person.Age)
+        if self.Person.IsWoman() and not self.Person.IsSingle() and self.Person.CanHaveChildren() and self.Person.Partner.CanHaveChildren():
+            p = pregnantProb(self.Person.Age)
             u = np.random.uniform()
             if u <= p:
                 self._execute()
             else:
-                heapq.heappush(self._eventqueue, Pregnancy(self._time + 1, self._eventqueue, self._person, self._population))
+                heapq.heappush(eventQueue, Pregnancy(self.Time + 1, self.Person))
         
     def _execute(self):        
-        self._person.SetPregnant(True)
-        self._population.AddEvent(self)
-        heapq.heappush(self._eventqueue, Birth(self._time + 9, self._eventqueue,self._person, self._population, self._person.Partner))
+        self.Person.SetPregnant(True)
+        population.AddEvent(self)
+        print(f'{self}')
+        father = Population.GetPartner(population, self.Person)
+        heapq.heappush(eventQueue, Birth(self.Time + 9, self.Person, father))
 
 
 class Breakup(Event):
     def __repr__(self):
-        return f'Breakup in month {self._time}'
+        return f'Breakup in month {self.Time}'
     def __str__(self):
         return self.__repr__()
 
     def check(self):
-        if not self._person.IsSingle():
-            p = np.random.uniform()
-            if p <= 0.2:
-                self._execute()
-            else:
-                heapq.heappush(self._eventqueue, Breakup(self._time + 6, self._eventqueue, self._person, self._population))
+        single = self.Person.IsSingle()
+        mourn = self.Person.IsMourning()
+        if single or mourn:
+            return
+        p = np.random.uniform()
+        if p <= 0.2:
+            self._execute()
+        else:
+            heapq.heappush(eventQueue, Breakup(self.Time + 6, self.Person))
 
-    def _execute(self):        
-        lamd1 = mourningTimeLambda(self._person.Age)
-        lamd2 = mourningTimeLambda(self._person.Partner.Age)
-        self._person.Partner.SetSingle()        
+    def _execute(self): 
+        partner = Population.GetPartner(population, self.Person)
+        lamd1 = mourningTimeLambda(self.Person.Age)
+        lamd2 = mourningTimeLambda(partner.Age)
         etime1 = int(1/gen_exp(lamd1))
         etime2 = int(1/gen_exp(lamd2))
-        self._population.AddEvent(self)
-        heapq.heappush(self._eventqueue,EndMourning(self._time + etime1, self._eventqueue, self._person, self._population))
-        heapq.heappush(self._eventqueue,EndMourning(self._time + etime2, self._eventqueue, self._person.Partner, self._population))
-        self._person.SetSingle()
+        population.AddEvent(self)
+        print(f'{self}')
+        partner.SetSingle() 
+        partner.SetMourning(True)
+        self.Person.SetSingle()
+        self.Person.SetMourning(True)
+        heapq.heappush(eventQueue,EndMourning(self.Time + etime1, self.Person))
+        heapq.heappush(eventQueue,EndMourning(self.Time + etime2, partner))
+
 
 class EndMourning(Event):
+    def __repr__(self):
+        return f'End Mourning in month {self.Time}'
+    def __str__(self):
+        return self.__repr__()
     
     def check(self):
         self._execute()
     
     def _execute(self):
-        self._person.SetMourning(False)
-        if self._person.IsWoman:
-            self._population.AddSingle(self._person, True)
-        else:
-            self._population.AddSingle(self._person, False)
-        heapq.heappush(self._eventqueue,GetPartner(self._time + 1, self._eventqueue, self._person, self._population))
+        self.Person.SetMourning(False)
+        female = self.Person.IsWoman()
+        heapq.heappush(eventQueue, GetPartner(self.Time + 1, self.Person))
 
 
 class GetPartner(Event):
     def __repr__(self):
-        return f'Couple created in month {self._time}'
+        return f'Couple created in month {self.Time}'
     def __str__(self):
         return self.__repr__()
 
     def check(self):
         if self._person.Age < 12:
             return
-        if not self._person.IsSingle():
-            print(f'single: {self._person.IsSingle()}')
+        single = self.Person.IsSingle()
+        mour = self.Person.IsMourning()
+        if not single:
             return
-        if self._person.IsMourning():
-            print(f'mourning: {self._person.IsMourning()}')
+        if mour:
             return
-        if self._person.IsWoman():
-            if len(self._population._single_men) == 0:
-                heapq.heappush(self._eventqueue, GetPartner(self._time + 3, self._eventqueue, self._person, self._population))            
+        if self.Person.IsWoman():
+            if population.SingleMen == 0:
+                heapq.heappush(eventQueue, GetPartner(self.Time + 3, self.Person)) 
                 return   
         else:
-            if len(self._population._single_women) == 0:
-                heapq.heappush(self._eventqueue, GetPartner(self._time + 3, self._eventqueue, self._person, self._population))            
+            if population.SingleWomen == 0:
+                heapq.heappush(eventQueue, GetPartner(self.Time + 3, self.Person))
                 return 
-        p = partnerWantedProb(self._person.Age)
+        p = partnerWantedProb(self.Person.Age)
         u1 = np.random.uniform()
         if u1 <= p:
             self._execute()
         else:
-            heapq.heappush(self._eventqueue, GetPartner(self._time + 5, self._eventqueue, self._person, self._population))            
-
-    def _execute(self):        
-        if self._person.IsWoman():
-            #if len(self._population._single_men) == 0:
-             #   heapq.heappush(self._eventqueue, GetPartner(self._time + 3, self._eventqueue, self._person, self._population))            
-              #  return
-            guy = sample(self._population.GetSinglePeople(False), 1)
-        else:
-           # if len(self._population._single_women) == 0:
-            #    heapq.heappush(self._eventqueue, GetPartner(self._time + 3, self._eventqueue, self._person, self._population))            
-             #   return
-            guy = sample(self._population.GetSinglePeople(True), 1)
-        age_difference = abs(self._person.Age - guy[0].Age)
+            heapq.heappush(eventQueue, GetPartner(self.Time + 5, self.Person)) 
+    
+    def _execute(self):
+        female = self.Person.IsWoman()  
+        guy = population.GetSinglePerson(female)
+        age_difference = abs(self.Person.Age - guy.Age)
         p = bePartnersProb(age_difference)
         u1 = np.random.uniform()
         if u1 <= p:
-            self._person.SetPartner(guy[0])
-            guy[0].SetPartner(self._person)
-            print(self._person)
-            print(guy[0])
-            if self._person.IsWoman():
-                self._population.RemoveSingle(self._person, True)
-                self._population.RemoveSingle(guy[0], False)
-                print('1---------------')
-            else:
-                self._population.RemoveSingle(guy[0], True)
-                self._population.RemoveSingle(self._person, False)
-                print('2---------------')
-            self._population.AddEvent(self)            
-            heapq.heappush(self._eventqueue, Breakup(self._time + 12, self._eventqueue, self._person, self._population))
-            heapq.heappush(self._eventqueue, Pregnancy(self._time + 2, self._eventqueue, self._person, self._population))
+            self.Person.SetPartner(guy)
+            part = Population.GetPartner(population, self.Person)
+            part.SetPartner(self.Person)
+            population.AddEvent(self)            
+            print(f'{self}')
+            heapq.heappush(eventQueue, Breakup(self.Time + 12, self.Person))
+            heapq.heappush(eventQueue, Pregnancy(self.Time + 2, self.Person))
         else:
-            heapq.heappush(self._eventqueue, GetPartner(self._time + 3, self._eventqueue, self._person, self._population))  
-            print('3-----------------------')          
+            heapq.heappush(eventQueue, GetPartner(self.Time + 3, self.Person))  
+                     
 
 
 class AgeUp(Event):
     def __repr__(self):
-        return f'Person aged up in month {self._time}'
+        return f'Person aged up in month {self.Time}'
     def __str__(self):
         return self.__repr__()
     
 
     def check(self):
-        self._person.AgeUp()
-        self._population.AddEvent(self)
-        heapq.heappush(self._eventqueue, AgeUp(self._time + 12, self._eventqueue, self._person, self._population))
-        if self._person.Age > 12:
-            self._population.AddSingle(self._person, self._person.IsWoman())
-            heapq.heappush(self._eventqueue, GetPartner(self._time + 1, self._eventqueue, self._person, self._population))
+        self.Person.AgeUp()
+        population.AddEvent(self)
+        print(f'{self}')
+        if self.Person.Age == self.Person.DiesAge:
+            heapq.heappush(eventQueue, Death(self.Time, self.Person))
+            return
+        heapq.heappush(eventQueue, AgeUp(self.Time + 12, self.Person))
+        if self.Person.Age > 12:
+            female = self.Person.IsWoman()
+            heapq.heappush(eventQueue, GetPartner(self.Time + 2, self.Person))
         

@@ -1,8 +1,10 @@
 import numpy as np
-from src.probData import childsWantedProb, partnerWantedProb
+from random import sample
+from src.probData import childsWantedProb, partnerWantedProb, fixedDeathProb
 
 class Person:
-    def __init__(self, age: int, iswoman: bool):
+    def __init__(self,person_id: int, age: int, iswoman: bool):
+        self.__person_id = person_id
         self.__age = age
         self.__single = True
         self.__partner_want = False
@@ -12,6 +14,7 @@ class Person:
         self.__mourning = False
         self.__pregnant = False
         self.__events = []
+        self.__deadAge = 0
         prob = np.random.uniform()
         child = 0
         for x in range(5):
@@ -20,10 +23,31 @@ class Person:
                 break
         self.__kids_want = child
         
+        u = np.random.uniform()
+        probs = fixedDeathProb(self.__woman)
+        for item in probs:
+            agemin, agemax, prob = item
+            if u <= prob:
+                avage = int(np.random.uniform(agemin,agemax))
+                self.__deadAge = avage
+        
+    def __eq__(self, anotherPerson):
+        return self.Id == anotherPerson.Id
+    
+    def __hash__(self):
+        return self.Id
 
     @property
     def Age(self):
         return self.__age
+
+    @property
+    def DiesAge(self):
+        return self.__deadAge
+
+    @property
+    def Id(self):
+        return self.__person_id
 
     @property
     def Partner(self):
@@ -59,7 +83,6 @@ class Person:
     def SetSingle(self):
         self.__partner = None
         self.__single = True
-        self.__mourning = True
 
     def SetPartner(self, person):
         self.__partner = person
@@ -90,27 +113,24 @@ class Person:
     def UpdateChildren(self, value: int):
         self.__kids_have += value
     
-    @staticmethod
-    def SetPerson(person, age: int, iswoman: bool, wantedchildren: int):
-        person.__age = age
-        person.__woman = iswoman
-        person.__kids_want = wantedchildren
-        person.__kids_have = 0
-        person.__partner = None
-        person.__mourning = False
-        person.__single = True
+    
 
 class Population:
     def __init__(self):
         self.__people = []
+        self.__peopleDict = {}
+        self.__number_of_people = 0
         self.__women = 0
         self.__men = 0
         self.__births = 0
         self.__deaths = 0
         self.__multiple_births = 0
-        self._single_women = []
-        self._single_men = []
         self.__events = []
+        self.removed = []
+
+    @property
+    def People(self):
+        return self.__people
 
     @property
     def TotalWomen(self):
@@ -132,26 +152,55 @@ class Population:
     def MultipleBirths(self):
         return self.__multiple_births
 
-    def GetSinglePeople(self, women: bool):
-        if women:
-            return self._single_women
-        else:
-            return self._single_men
+    @property
+    def SingleMen(self):
+        return len(self.__GetSinglePeople(True))
 
-    def AddPerson(self, person: Person):
-        self.__people.append(person)   
-    
-    def AddSingle(self, person, female):
-        if female:
-            self._single_women.append(person)
+    @property
+    def SingleWomen(self):
+        return len(self.__GetSinglePeople(False))
+
+    def GetSinglePerson(self, women):
+        singles = self.__GetSinglePeople(not women)
+        guy = sample(singles, 1)[0]
+        pers = self.__Find_Person(guy.Id)
+        return pers
+
+    def __GetSinglePeople(self, women: bool) -> list:
+        singles = []
+        if women:            
+            for i in self.__people:
+                if i.IsSingle() and not i.IsMourning() and not i.IsWoman():
+                    singles.append(i)
         else:
-            self._single_men.append(person)
+            for i in self.__people:
+                if i.IsSingle() and not i.IsMourning() and i.IsWoman():
+                    singles.append(i)
+        return singles
+
+    def AddSingle(self, person, female):
+        pers = self.__Find_Person(person.Id) 
+        if not pers or person.Age < 12:
+            return
+        pers.SetSingle()                
+        
+
+    def GetNextId(self):
+        self.__number_of_people += 1
+        return self.__number_of_people
     
     def RemoveSingle(self, person, female):
-        if female:
-            self._single_women.remove(person)
-        else:
-            self._single_men.remove(person)
+        try:
+            if female:
+                pers = self.__Find_Person(person.Id, self._single_women)
+                self._single_women.remove(pers)
+                return True
+            else:
+                pers = self.__Find_Person(person.Id, self._single_men)
+                self._single_men.remove(pers)
+                return True
+        except KeyError:
+            return False
     
     def UpdateBirths(self, multiple: bool):
         if multiple:
@@ -159,51 +208,43 @@ class Population:
         self.__births += 1
 
     def RemovePerson(self, person: Person):
-        #if person.IsSingle():
-        #    if person.IsWoman():
-        #        self._single_women.remove(person)
-        #    else:
-        #        self._single_men.remove(person)
-        self.__people.remove(person)
+        female = person.IsWoman()
+        pers = self.__Find_Person(person.Id)
+        persid = pers.Id
+        self.__people.remove(pers)
+        self.__peopleDict.pop(persid)
         self.__deaths += 1
+        self.removed.append(persid)
     
-    def AgeUp(self):
-        for person in self.__people:
-            person.AgeUp()
+    def NewPerson(self, age, female):
+        pid = self.GetNextId()
+        per = Person(pid, age, female)
+        self.__people.append(per)
+        self.__peopleDict[pid] = per 
+        return per
 
+    def __Find_Person(self, personId: int):
+        return self.__peopleDict[personId]
+        
+    @staticmethod
+    def GetPartner(self, person: Person):
+        guy = person.Partner.Id
+        return self.__Find_Person(guy)
+        
     def SetInitialValues(self, populationSize: int, ageAverage: int, ageDeviation: int, womenAmount=0):
         if womenAmount > 0:
             agesw = np.random.normal(ageAverage, ageDeviation, womenAmount)
-            agesm = np.random.normal(ageAverage,ageDeviation,populationSize-womenAmount)
+            agesm = np.random.normal(ageAverage, ageDeviation, populationSize-womenAmount)
             for i in agesw:
-                self.__make_woman__(int(i))
+                pers1 = self.NewPerson(i, True)
             for i in agesm:
-                self.__make_man__(int(i))
+                pers2 = self.NewPerson(i, False)                
         else: 
             ages = np.random.normal(ageAverage, ageDeviation, populationSize)
             for i in ages: 
                 genderprob = np.random.uniform()
-                isFemale = genderprob < 0.5
-                if isFemale:
-                    self.__make_woman__(int(i))
-                else:
-                    self.__make_man__(int(i))
-
-    def __make_woman__(self, age: int):
-        person = Person(age, True)
-        prob = np.random.uniform()
-        person.SetWantsPartner(prob < partnerWantedProb(age))
-        self.__people.append(person)
-        self._single_women.append(person)
-        self.__women += 1
-    
-    def __make_man__(self, age: int):
-        person = Person(age, False)
-        prob = np.random.uniform()
-        person.SetWantsPartner(prob < partnerWantedProb(age))
-        self.__people.append(person)
-        self._single_men.append(person)
-        self.__men += 1
+                female = genderprob < 0.5
+                pers = self.NewPerson(i, female)
 
            
     def __iter__(self):
@@ -213,8 +254,8 @@ class Population:
         self.__events.append(eventLog)
     
     def PrintLog(self):
-        for event in self.__events:
-            print(event)
+        #for event in self.__events:
+        #    print(event)
         print('------------------------------')
         print(f'Total People in Population: {len(self.__people)}')
         print(f'Total Births: {self.__births}')

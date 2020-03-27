@@ -33,7 +33,7 @@ def pregnantProb(age: int):
 
 def partnerWantedProb(age: int):
     if age < 12:
-        return 0
+        return -1
     elif age < 15:
         return 0.6
     elif age < 21:
