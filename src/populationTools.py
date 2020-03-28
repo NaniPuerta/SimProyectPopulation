@@ -121,6 +121,7 @@ class Population:
         self.__people = []
         self.__peopleDict = {}
         self.__number_of_people = 0
+        self.__people_born = 0
         self.__women = 0
         self.__men = 0
         self.__births = 0
@@ -222,6 +223,7 @@ class Population:
         per = Person(pid, age, female)
         self.__people.append(per)
         self.__peopleDict[pid] = per 
+        self.__people_born += 1
         return per
 
     def __Find_Person(self, personId: int):
@@ -236,13 +238,13 @@ class Population:
         if womenAmount > 0:
             count = 0
             for i in range(womenAmount):
-                u = np.random.uniform()
-                age = gen_normal(35, 100)
+                age = np.random.uniform(0,100)
+                #age = gen_normal(35, 100)
                 print(age)
                 pers1 = self.NewPerson(age, True)
             for i in range(populationSize-womenAmount):
-                u = np.random.uniform()
-                age = gen_normal(35, 100)
+                age = np.random.uniform(0,100)
+                #age = gen_normal(35, 100)
                 print(age)
                 pers1 = self.NewPerson(age, False)
             #agesw = np.random.normal(ageAverage, ageDeviation, womenAmount)
@@ -253,8 +255,8 @@ class Population:
             #    pers2 = self.NewPerson(i, False)                
         else:
             for i in range(populationSize):
-                u = np.random.uniform() 
-                age = gen_normal(35, 100)
+                age = np.random.uniform(0,100) 
+                #age = gen_normal(35, 100)
                 genderprob = np.random.uniform()
                 female = genderprob < 0.5
                 pers1 = self.NewPerson(age, female)
@@ -263,6 +265,13 @@ class Population:
             #    genderprob = np.random.uniform()
             #    female = genderprob < 0.5
             #    pers = self.NewPerson(i, female)
+                try:
+                    fd = open('agelog.txt', 'a')
+                except:
+                    fd = open('agelog.txt','x')
+                fd.write(str(age))
+                fd.write('-------------------------------\n')
+                fd.close()
 
            
     def __iter__(self):
@@ -277,6 +286,7 @@ class Population:
         print(f'Total Births: {self.__births}')
         print(f'Multiple Births: {self.__multiple_births}')
         print(f'Total Deaths: {self.__deaths}')
+        print(f'Total people created: {self.__people_born}')
 
     def Log(self):
         st = f'Total People in Population: {len(self.__people)}\nTotal Births: {self.__births}\nMultiple Births: {self.__multiple_births}\nTotal Deaths: {self.__deaths}\n'
