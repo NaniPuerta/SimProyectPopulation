@@ -1,6 +1,7 @@
 import numpy as np
 from random import sample
 from src.probData import childsWantedProb, partnerWantedProb, fixedDeathProb
+from src.probabilityTools import gen_normal
 
 class Person:
     def __init__(self,person_id: int, age: int, iswoman: bool):
@@ -233,18 +234,35 @@ class Population:
         
     def SetInitialValues(self, populationSize: int, ageAverage: int, ageDeviation: int, womenAmount=0):
         if womenAmount > 0:
-            agesw = np.random.normal(ageAverage, ageDeviation, womenAmount)
-            agesm = np.random.normal(ageAverage, ageDeviation, populationSize-womenAmount)
-            for i in agesw:
-                pers1 = self.NewPerson(i, True)
-            for i in agesm:
-                pers2 = self.NewPerson(i, False)                
-        else: 
-            ages = np.random.normal(ageAverage, ageDeviation, populationSize)
-            for i in ages: 
+            count = 0
+            for i in range(womenAmount):
+                u = np.random.uniform()
+                age = gen_normal(35, 100)
+                print(age)
+                pers1 = self.NewPerson(age, True)
+            for i in range(populationSize-womenAmount):
+                u = np.random.uniform()
+                age = gen_normal(35, 100)
+                print(age)
+                pers1 = self.NewPerson(age, False)
+            #agesw = np.random.normal(ageAverage, ageDeviation, womenAmount)
+            #agesm = np.random.normal(ageAverage, ageDeviation, populationSize-womenAmount)
+            #for i in agesw:
+            #    pers1 = self.NewPerson(i, True)
+            #for i in agesm:
+            #    pers2 = self.NewPerson(i, False)                
+        else:
+            for i in range(populationSize):
+                u = np.random.uniform() 
+                age = gen_normal(35, 100)
                 genderprob = np.random.uniform()
                 female = genderprob < 0.5
-                pers = self.NewPerson(i, female)
+                pers1 = self.NewPerson(age, female)
+            #ages = np.random.normal(ageAverage, ageDeviation, populationSize)
+            #for i in ages: 
+            #    genderprob = np.random.uniform()
+            #    female = genderprob < 0.5
+            #    pers = self.NewPerson(i, female)
 
            
     def __iter__(self):
@@ -254,11 +272,12 @@ class Population:
         self.__events.append(eventLog)
     
     def PrintLog(self):
-        #for event in self.__events:
-        #    print(event)
         print('------------------------------')
         print(f'Total People in Population: {len(self.__people)}')
         print(f'Total Births: {self.__births}')
         print(f'Multiple Births: {self.__multiple_births}')
         print(f'Total Deaths: {self.__deaths}')
-        
+
+    def Log(self):
+        st = f'Total People in Population: {len(self.__people)}\nTotal Births: {self.__births}\nMultiple Births: {self.__multiple_births}\nTotal Deaths: {self.__deaths}\n'
+        return st

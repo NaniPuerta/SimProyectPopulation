@@ -1,0 +1,50 @@
+Total People in Population: 424
+Total Births: 95
+Multiple Births: 34
+Total Deaths: 31
+-------------------------------
+Total People in Population: 402
+Total Births: 86
+Multiple Births: 24
+Total Deaths: 27
+-------------------------------
+Total People in Population: 409
+Total Births: 95
+Multiple Births: 30
+Total Deaths: 37
+-------------------------------
+Total People in Population: 396
+Total Births: 90
+Multiple Births: 22
+Total Deaths: 29
+-------------------------------
+Total People in Population: 390
+Total Births: 81
+Multiple Births: 23
+Total Deaths: 29
+-------------------------------
+Total People in Population: 397
+Total Births: 89
+Multiple Births: 21
+Total Deaths: 27
+-------------------------------
+Total People in Population: 409
+Total Births: 85
+Multiple Births: 25
+Total Deaths: 16
+-------------------------------
+Total People in Population: 392
+Total Births: 80
+Multiple Births: 26
+Total Deaths: 33
+-------------------------------
+Total People in Population: 395
+Total Births: 83
+Multiple Births: 23
+Total Deaths: 32
+-------------------------------
+Total People in Population: 412
+Total Births: 97
+Multiple Births: 29
+Total Deaths: 29
+-------------------------------

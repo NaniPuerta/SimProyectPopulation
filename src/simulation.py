@@ -29,10 +29,16 @@ class Simulation:
     def __run__(self):
         while(len(eventQueue) != 0 and self.CurrentTime < self.EndTime):
             event = heapq.heappop(eventQueue)
-            oldtime = self.CurrentTime
-            self._currentTime += (event.Time - oldtime)
+            self._currentTime = event.Time
             event.check()
         population.PrintLog()
+        try:
+            fd = open('log.txt', 'a')
+        except:
+            fd = open('log.txt','x')
+        fd.write(population.Log())
+        fd.write('-------------------------------\n')
+        fd.close()
 
     def Start(self):
         self.__set_initial_sate__(self._psize, self._age, self._agedev, self._women)   
